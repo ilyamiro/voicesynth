@@ -13,7 +13,6 @@ import time
 import json
 import threading
 
-from playsound import playsound
 import torch
 
 from .utils import (
@@ -23,6 +22,11 @@ from .utils import (
     VoiceSynthError,
 )
 from .utils.exceptions import *
+
+# disabling playsound module logging
+logging.getLogger("playsound").setLevel(logging.ERROR)
+
+from playsound import playsound
 
 
 class Model:
