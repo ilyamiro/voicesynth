@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 from pathlib import Path
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="voicesynth",
-    version="0.0.10",
+    version="0.0.11",
     author="ilyamiro",
     author_email="ilyamiro.workemail@gmail.com",
     description="Package for realistic voice synthesis",
