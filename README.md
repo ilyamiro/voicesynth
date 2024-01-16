@@ -1,8 +1,10 @@
 <h2>VoiceSynth</h2> 
-<strong>Voice Synthesizing Library</strong><br>
-## How to use:
+<strong>Voice Synthesizing Library</strong> <br>
+
+<h3> How to use: </h3>
 First, install the package
-```
+
+```bash
 pip install voicesynth
 ```
 Then import it into your code and go ahead and use it:
