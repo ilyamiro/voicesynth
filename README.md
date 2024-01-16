@@ -1,4 +1,4 @@
-README for voicesynth <br>
+<h2>VoiceSynth</h2> 
 <strong>Voice Synthesizing Library</strong>
 ## How to use:
 First, install the package
@@ -12,7 +12,8 @@ from voicesynth import Model, Synthesizer, show_available_models
 show_available_models() # Showcase of all tts models available
 
 # initializing the model
-model = Model("v4_ru")
+# setting show_download to False does not show model downloading progress
+model = Model("v4_ru", model_path="model.pt", show_download=False)  
 model.set_speaker("eugene")
 
 # creating a synthesizer instance
@@ -26,7 +27,18 @@ import time
 
 synthesizer.synthesize("Всем привет!", path="audio.wav")
 time.sleep(3)
-synthesizer.play("audio.wav")
+synthesizer.play_playsound("audio.wav")
+```
+There are multiple ways to play a synthesized audio:
+```python
+synthesizer.say("Как дела?", module="pygame") # Using pygame.mixer to play the audio
+synthesizer.say("Хорошо, а твои как?", module="pydub") # Using pydub to play the audio
+```
+There are three ways to play the audio:
+```python
+synthesizer.audio.play_playsound("audio.wav")
+synthesizer.audio.play_pygame("audio.wav")
+synthesizer.audio.play_pydub("audio.wav")
 ```
 All models support simple ssml tags:
 ```python
@@ -35,9 +47,9 @@ synthesizer.say("В н+едрах т+ундры в+ыдры п+ели п+есн�
 # could change speaking speed without knowing how to manually do it
 ```
 
-By default, logging is enabled. If it bothers you, you can set logging to False.
+By default, logging is enabled. If it bothers you, you can disable it
 ```python
-import voicesynth
+from voicesynth import disable_logging
 
-voicesynth.logging_enabled(False)
+disable_logging()
 ```

@@ -4,9 +4,10 @@ from pathlib import Path
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
+
 setup(
     name="voicesynth",
-    version="0.1.0",
+    version="0.1.2",
     author="ilyamiro",
     author_email="ilyamiro.workemail@gmail.com",
     description="Package for realistic voice synthesis",
@@ -21,9 +22,8 @@ setup(
     ],
     install_requires=[
         "torch",
-        "rich",
-        "playsound",
-        "numpy"
+        "numpy",
+        "playsound"
     ],
 
 )
