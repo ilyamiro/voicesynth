@@ -1,5 +1,5 @@
 <h2>VoiceSynth</h2> 
-<strong>Voice Synthesizing Library</strong>
+<strong>Voice Synthesizing Library</strong><br>
 ## How to use:
 First, install the package
 ```
