@@ -69,3 +69,19 @@ class SynthesisError(AudioError):
     """
     def __init__(self, message: str):
         super().__init__(message)
+
+
+class PackageError(VoiceSynthError):
+    """
+    Error in manual package installation
+    """
+    def __init__(self, message: str):
+        super().__init__(message)
+
+
+class PackageInstallatioError(PackageError):
+    """
+    Class for package installation errors
+    """
+    def __init__(self, message: str):
+        super().__init__(message)

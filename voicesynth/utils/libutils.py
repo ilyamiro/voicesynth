@@ -1,39 +1,43 @@
+import logging
 import subprocess
 import sys
 
 from importlib.util import find_spec
+from importlib import import_module
 
+logging.basicConfig(format="\033[1m\033[31mVoicesynth - %(asctime)s - %(message)s\033[0m", datefmt="%Y-%b-%d %H:%M:%S",
+                    level=logging.INFO)
 
-def redprint(text, **kwargs):
-    print(f"\033[1m\033[31m{text}\033[0m", **kwargs)
-
-
-def install(*args: str, output: bool = True, auto_upgrade: bool = True) -> None:
+def install(package: str, output: bool = True, auto_upgrade: bool = True):
     """
     Function for installing specified packages inside a python script
 
     :param package: name of the package to install from PyPi
     :param output: surpasses console output if set False
     :param auto_upgrade: upgrades the package to the last available version if the package is already installed
+
+    :return: Returns True if installation was successful False otherwise
     """
-    package_installed = installed(package)
+    packages_installed = installed(package)
     # running a commands using the same environment
-    if not (package_installed and not auto_upgrade):
+    if not (packages_installed and not auto_upgrade):
         subprocess.run(
-            args=[sys.executable, "-m", "pip", "install", "-U", *args],
+            args=[sys.executable, "-m", "pip", "install", "-U", package],
             stdout=subprocess.DEVNULL if not output else None,  # DEVNULL surpasses console output
             stderr=subprocess.STDOUT
         )
     try:
-        globals()[package] = __import__(
-            package)  # checking whether the package was installed and importing it into the code
-        if not (package_installed and not auto_upgrade):
-            redprint(
-                f"{package} {'installation succeeded' if not package_installed else 'was already installed, updated successfully'}")
+        import_module(package)
+        # checking whether the package was installed and importing it into the code
+        if not (packages_installed and not auto_upgrade):
+            logging.info(
+                f"{package} {'installation succeeded' if not packages_installed else 'was already installed, updated successfully'}")
         else:
-            redprint(f"{package} is already installed")
+            logging.info(f"{package} is already installed")
+        return import_module(package)  # installation or upgrade succeeded
     except ModuleNotFoundError:
-        redprint(f"{package} installation failed")
+        logging.info(f"{package} installation failed")
+        return False  # installation failed
 
 
 def installed(name: str) -> bool:
@@ -43,5 +47,4 @@ def installed(name: str) -> bool:
     :return: True if package is installed False otherwise
     """
     return False if not find_spec(name) else True
-
 

@@ -1,15 +1,9 @@
 from voicesynth.voicesynth import (
-    Synthesizer, Model, show_available_models
-)
-from voicesynth.utils.config import (
-    log_enable, version
-)
-from voicesynth.utils.__utils import (
-    logging_enabled
+    Synthesizer, Model, show_available_models, disable_logging
 )
 
-__all__ = ["Synthesizer", "Model", "show_available_models"]
 
+__all__ = ["Synthesizer", "Model", "show_available_models", "disable_logging"]
 
 
 
