@@ -68,7 +68,7 @@ class Model:
                 error_msg += f"{key}, "
             raise IncorrectModel(error_msg)
 
-        logging.info("Model initialized")
+        logging.info("Model configured")
 
         # Ensuring that model is a PyTorch one
         if not self.model_path.endswith(".pt"):
@@ -101,7 +101,7 @@ class Model:
             torch.hub.download_url_to_file(url, f"{self.model_path}",
                                            progress=show_progress)
         else:
-            logging.info("Setting existing model...")
+            logging.info("Setting up existing model")
 
 
 class Synthesizer:
@@ -125,6 +125,7 @@ class Synthesizer:
         device = torch.device("cpu")
         torch.set_num_threads(16)
 
+        logging.info("PyTorch device configured: Cpu, 16 threads")
         # initialize sample rate
         self.sample_rate = 48000
 
@@ -135,14 +136,13 @@ class Synthesizer:
 
         logging.info("Model imported to torch tts")
 
-    def say(self, text: str, path: str = "audio.wav", prosody_rate: int = 100, delete_file: bool = False,
+    def say(self, text: str, path: str = "audio.wav", prosody_rate: int = 100,
             module: Literal["playsound", "pygame", "pydub"] = "playsound") -> None:
         """
         Function for saying something
         :param prosody_rate: relative speed for saying
         :param path: path for audio to be saved in. Should be a .wav file
         :param text: text for saying
-        :param delete_file: if set True, file is being deleted after playing
         :param module: module to use for audio playing
         """
         if not path.endswith(".wav"):
@@ -150,7 +150,7 @@ class Synthesizer:
 
         self.synthesize(text, path, prosody_rate)
 
-        getattr(self.audio, f"play_{module}")(path, delete_file)
+        getattr(self.audio, f"play_{module}")(path)
 
     def synthesize(self, text: str, path: str = "audio.wav", prosody_rate: int = 100) -> None:
         try:
@@ -164,19 +164,15 @@ class Synthesizer:
                 "There was en error synthesizing text. Ensure all parameters are inputed correctly")
 
 
-def _player(path: str, remove_after: bool = True):
+def _player(path: str):
     def decorator(func):
         def wrapper():
             if os.path.exists(path):
                 func()
-                logging.info("Audio played")
-                if remove_after:
-                    os.remove(path)
+                logging.info(f"File {path} played")
             else:
                 raise InvalidAudioPath("Specified path for playing does not exist")
-
         return wrapper
-
     return decorator
 
 
@@ -184,6 +180,7 @@ def _install_audio_package(name: str):
     if not installed(name):
         logging.info(f"{name} is not installed, voicesynth will attempt to install it for you...")
         try:
+            logging.info(f"Proceeding with {name} installation")
             package = install(name, output=False)
             if not package:
                 logging.info(
@@ -199,27 +196,36 @@ def _install_audio_package(name: str):
 
 class AudioManager:
     @staticmethod
-    def play_playsound(path: str, remove_after: bool = False):
+    def play_playsound(path: str):
         _install_audio_package("playsound")
 
-        @_player(path, remove_after)
+        if sys.platform == "linux":
+            try:
+                from gi.repository import GObject
+            except ImportError:
+                install("pygobject", output=False, configure=False)
+
+        @_player(path)
         def play():
             playsound.playsound(path)
 
         play()
 
     @staticmethod
-    def play_pygame(path: str, remove_after: bool = False):
+    def play_pygame(path: str):
 
         from os import environ
         environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
         _install_audio_package("pygame")
 
-        pygame.init()
-        pygame.mixer.init()
+        if not pygame.get_init():
+            pygame.init()
+            pygame.mixer.init()
 
-        @_player(path, remove_after)
+            logging.info("Pygame initialized")
+
+        @_player(path)
         def play():
             pygame.mixer.music.load(path)
             pygame.mixer.music.play()
@@ -230,15 +236,19 @@ class AudioManager:
         play()
 
     @staticmethod
-    def play_pydub(path: str, remove_after: bool = False):
+    def play_pydub(path: str):
         _install_audio_package("pydub")
 
         from pydub.playback import play as pdbplay
 
         if sys.platform == "linux":
-            subprocess.run(["jack_control", "start"])
+            subprocess.run(
+                ["jack_control", "start"],
+                stdout=subprocess.DEVNULL,  # DEVNULL surpasses console output
+                stderr=subprocess.STDOUT)
+            logging.info("jack_control service started")
 
-        @_player(path, remove_after)
+        @_player(path)
         def play():
             pdbplay(pydub.AudioSegment.from_wav(path))
 
