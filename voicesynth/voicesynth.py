@@ -21,33 +21,55 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-
-import importlib
-import os
 import logging
+
+
+def _disable_loggers():
+    """
+    Disables all logs produced by imported modules
+    """
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for logger in loggers:
+        logger.setLevel(logging.ERROR)
+
+
+import os
 import subprocess
 import sys
 
-# disabling playsound module logging
-logging.getLogger("playsound").setLevel(logging.ERROR)
+from importlib.util import find_spec
+
+from typing import Literal, List, Union
 
 import playsound
 import torch
 
-from typing import Literal, List
+from voicesynth.exceptions import *
 
-from .utils import (
-    install, installed
-)
-from .utils.exceptions import *
-
-from .models import (
+from voicesynth.models import (
     models, show_available_models
 )
 
+_disable_loggers()
+
+logging.basicConfig(format="\033[1m\033[31mVoicesynth - %(asctime)s - %(message)s\033[0m", datefmt="%Y-%b-%d %H:%M:%S",
+                    level=logging.INFO)
+
 
 def disable_logging():
+    """
+    Disables voicesynth logging
+    """
     logging.disable(logging.ERROR)
+
+
+def installed(name: str) -> bool:
+    """
+    A function for checking if the specified package is installed in venv
+    :param name: name of the package
+    :return: True if package is installed False otherwise
+    """
+    return False if not find_spec(name) else True
 
 
 class Model:
@@ -165,8 +187,12 @@ class Synthesizer:
 
 
 def _player(path: str):
+    """
+    Player decorator for checking specified path before playing.
+    """
     def decorator(func):
         def wrapper():
+            # checking if the path exists
             if os.path.exists(path):
                 func()
                 logging.info(f"File {path} played")
@@ -176,34 +202,16 @@ def _player(path: str):
     return decorator
 
 
-def _install_audio_package(name: str):
-    if not installed(name):
-        logging.info(f"{name} is not installed, voicesynth will attempt to install it for you...")
-        try:
-            logging.info(f"Proceeding with {name} installation")
-            package = install(name, output=False)
-            if not package:
-                logging.info(
-                    f"{name} installation failed. Try installing it manually using '{sys.executable} -m 'pip install {name}'.")
-                return
-            else:
-                globals()[name] = package
-        except Exception:
-            raise PackageInstallatioError(f"Unexpected exception raised while trying to install {name}")
-    else:
-        globals()[name] = importlib.import_module(name)
-
-
 class AudioManager:
     @staticmethod
     def play_playsound(path: str):
-        _install_audio_package("playsound")
-
+        # checking if the platform is Linux-based
         if sys.platform == "linux":
             try:
+                # checking if the pygobject exists
                 from gi.repository import GObject
             except ImportError:
-                install("pygobject", output=False, configure=False)
+                logging.info("Install pygobject for")
 
         @_player(path)
         def play():
@@ -214,11 +222,16 @@ class AudioManager:
     @staticmethod
     def play_pygame(path: str):
 
+        # disabling pygame support prompt
         from os import environ
         environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
-        _install_audio_package("pygame")
+        if not installed("pygame"):
+            raise ModuleNotFoundError("Pygame is not installed. Install it using 'pip install pydub' and try again")
+        else:
+            import pygame
 
+        # initializing pygame if it was not yet.
         if not pygame.get_init():
             pygame.init()
             pygame.mixer.init()
@@ -237,7 +250,8 @@ class AudioManager:
 
     @staticmethod
     def play_pydub(path: str):
-        _install_audio_package("pydub")
+        if not installed("pydub"):
+            raise ModuleNotFoundError("PyDub is not installed. Install it using 'pip install pydub' and try again")
 
         from pydub.playback import play as pdbplay
 
