@@ -27,10 +27,12 @@ import logging
 def _disable_loggers():
     """
     Disables all logs produced by imported modules
+
+    DEPRECATED
     """
     loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    for logger in loggers:
-        logger.setLevel(logging.ERROR)
+    for logg in loggers:
+        logg.setLevel(logging.ERROR)
 
 
 import os
@@ -50,17 +52,26 @@ from voicesynth.models import (
     models, show_available_models
 )
 
-_disable_loggers()
 
-logging.basicConfig(format="\033[1m\033[31mVoicesynth - %(asctime)s - %(message)s\033[0m", datefmt="%Y-%b-%d %H:%M:%S",
-                    level=logging.INFO)
+class CustomLogger(logging.Logger):
+    def __init__(self):
+        super().__init__("Voicesynth", level=logging.NOTSET)
+        self._setup()
+
+    def _setup(self):
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(fmt="Voicesynth - %(asctime)s - %(message)s", datefmt="%Y-%b-%d %H:%M:%S"))
+        self.addHandler(handler)
+
+
+logger = CustomLogger()
 
 
 def disable_logging():
     """
     Disables voicesynth logging
     """
-    logging.disable(logging.ERROR)
+    logger.disable(logging.ERROR)
 
 
 def installed(name: str) -> bool:
@@ -90,7 +101,7 @@ class Model:
                 error_msg += f"{key}, "
             raise IncorrectModel(error_msg)
 
-        logging.info("Model configured")
+        logger.info("Model configured")
 
         # Ensuring that model is a PyTorch one
         if not self.model_path.endswith(".pt"):
@@ -102,7 +113,7 @@ class Model:
         if name in models[self.model]["speakers"]:
             # noinspection PyAttributeOutsideInit
             self.speaker = name
-            logging.info(f"Speaker {name} set")
+            logger.info(f"Speaker {name} set")
         else:
             error_msg = "Speaker invalid! Ensure it's one of "
             for speaker in models[self.model]["speakers"]:
@@ -119,11 +130,11 @@ class Model:
         self.model_path = model_path
         # downloading model from source
         if not os.path.exists(f"{self.model_path}"):
-            logging.info("Downloading synthesis model")
+            logger.info("Downloading synthesis model")
             torch.hub.download_url_to_file(url, f"{self.model_path}",
                                            progress=show_progress)
         else:
-            logging.info("Setting up existing model")
+            logger.info("Setting up existing model")
 
 
 class Synthesizer:
@@ -141,13 +152,13 @@ class Synthesizer:
         self.model = model
         self.audio = AudioManager()
 
-        logging.info("Synthesizer configured")
+        logger.info("Synthesizer configured")
 
         # setting torch configuration
         device = torch.device("cpu")
         torch.set_num_threads(16)
 
-        logging.info("PyTorch device configured: Cpu, 16 threads")
+        logger.info("PyTorch device configured: Cpu, 16 threads")
         # initialize sample rate
         self.sample_rate = 48000
 
@@ -156,7 +167,7 @@ class Synthesizer:
             f"{self.model.model_path}").load_pickle("tts_models", "model")
         self.model_download.to(device)
 
-        logging.info("Model imported to torch tts")
+        logger.info("Model imported to torch tts")
 
     def say(self, text: str, path: str = "audio.wav", prosody_rate: int = 100,
             module: Literal["playsound", "pygame", "pydub"] = "playsound") -> None:
@@ -180,10 +191,11 @@ class Synthesizer:
                                          speaker=self.model.speaker,
                                          sample_rate=self.sample_rate,
                                          audio_path=path)
-            logging.info("Audio synthesyzed")
+
+            logger.info("Audio synthesized")
         except Exception:
             raise SynthesisError(
-                "There was en error synthesizing text. Ensure all parameters are inputed correctly")
+                "There was en error synthesizing text. Ensure all parameters are inputted correctly")
 
 
 def _player(path: str):
@@ -195,7 +207,7 @@ def _player(path: str):
             # checking if the path exists
             if os.path.exists(path):
                 func()
-                logging.info(f"File {path} played")
+                logger.info(f"File {path} played")
             else:
                 raise InvalidAudioPath("Specified path for playing does not exist")
         return wrapper
@@ -211,10 +223,11 @@ class AudioManager:
                 # checking if the pygobject exists
                 from gi.repository import GObject
             except ImportError:
-                logging.info("Install pygobject for")
+                logger.debug("Install pygobject for playsound using pip install pygobject. Playsound is relying on another subprocess")
 
         @_player(path)
         def play():
+            # playing sound using playsound library
             playsound.playsound(path)
 
         play()
@@ -236,7 +249,7 @@ class AudioManager:
             pygame.init()
             pygame.mixer.init()
 
-            logging.info("Pygame initialized")
+            logger.info("Pygame initialized")
 
         @_player(path)
         def play():
@@ -253,17 +266,17 @@ class AudioManager:
         if not installed("pydub"):
             raise ModuleNotFoundError("PyDub is not installed. Install it using 'pip install pydub' and try again")
 
-        from pydub.playback import play as pdbplay
+        from pydub.playback import play as replay
 
         if sys.platform == "linux":
             subprocess.run(
                 ["jack_control", "start"],
                 stdout=subprocess.DEVNULL,  # DEVNULL surpasses console output
                 stderr=subprocess.STDOUT)
-            logging.info("jack_control service started")
+            logger.info("jack_control service started")
 
         @_player(path)
         def play():
-            pdbplay(pydub.AudioSegment.from_wav(path))
+            replay(pydub.AudioSegment.from_wav(path))
 
         play()
