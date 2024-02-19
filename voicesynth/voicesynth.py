@@ -71,7 +71,7 @@ def disable_logging():
     """
     Disables voicesynth logging
     """
-    logger.disable(logging.ERROR)
+    logger.disabled = True
 
 
 def installed(name: str) -> bool:
