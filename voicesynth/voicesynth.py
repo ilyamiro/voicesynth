@@ -195,7 +195,7 @@ class Synthesizer:
             logger.info("Audio synthesized")
         except Exception:
             raise SynthesisError(
-                "There was en error synthesizing text. Ensure all parameters are inputted correctly")
+                f"There was en error synthesizing this text: {text}. Ensure all parameters are inputted correctly")
 
 
 def _player(path: str):
