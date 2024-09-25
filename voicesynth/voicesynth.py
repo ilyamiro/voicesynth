@@ -281,7 +281,7 @@ class AudioManager:
 
         play()
 
-disable_logging()
+# disable_logging()
 
 
 # make a default say function in english language

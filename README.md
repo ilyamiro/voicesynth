@@ -1,5 +1,8 @@
-<h2>VoiceSynth</h2> 
+<h2>voicesynth</h2> 
 <strong>Voice Synthesizing Library</strong> <br>
+
+> [!NOTE]
+> The project uses [Silero TTS](https://github.com/snakers/silero-models)
 
 <h3> How to use: </h3>
 First, install the package
@@ -9,30 +12,46 @@ pip install voicesynth
 ```
 Then import it into your code and go ahead and use it:
 ```python
+from voicesynth import say
+
+say("Hello!")
+```
+Or
+```python
+import voicesynth
+
+voicesynth.say("Hello!")
+```
+Or if you want to specify a language/model, you can use it like this:
+
+```python
 from voicesynth import Model, Synthesizer, show_available_models
 
 show_available_models() # Showcase of all tts models available
 
 # initializing the model
 # setting show_download to False does not show model downloading progress
-model = Model("v4_ru", model_path="model.pt", show_download=False)  
-model.set_speaker("eugene")
+model = Model("v3_en", model_path="model.pt", show_download=False)  
+model.set_speaker("en_73")
 
 # creating a synthesizer instance
 synthesizer = Synthesizer(model)
-synthesizer.say("Я представить себе не могу, что это действительно случилось!")
+synthesizer.say("This is a good way to spend my day!")
 ```
 Instead of using .say() method, you can synthesize an audio and then play it whenever you want
 
 ```python
 import time
 
-synthesizer.synthesize("Всем привет!", path="audio.wav")
+synthesizer.synthesize("Whats'up!", path="audio.wav")
 time.sleep(3)
-synthesizer.play_playsound("audio.wav")
+synthesizer.audio.play_playsound("audio.wav")
 ```
 There are multiple ways to play a synthesized audio:
 ```python
+model = Model("v4_ru", "model_ru.pt")
+synthesizer = Synthesizer(model)
+
 synthesizer.say("Как дела?", module="pygame") # Using pygame.mixer to play the audio
 synthesizer.say("Хорошо, а твои как?", module="pydub") # Using pydub to play the audio
 ```
