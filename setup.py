@@ -7,9 +7,9 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="voicesynth",
-    version="0.1.5-3",
+    version="0.2.0",
     author="ilyamiro",
-    author_email="ilyamiro.workemail@gmail.com",
+    author_email="ilyamiro.work@gmail.com",
     description="Package for realistic voice synthesis",
     long_description=long_description,
     long_description_content_type='text/markdown',
