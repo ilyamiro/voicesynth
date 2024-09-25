@@ -1,8 +1,9 @@
 <h2>voicesynth</h2> 
-<strong>Voice Synthesizing Library</strong> <br>
+<strong>Voice Synthesizing Library</strong> <br><br>
+
 
 > [!NOTE]
-> The project uses [Silero TTS](https://github.com/snakers/silero-models)
+> The project uses [Silero TTS](https://github.com/snakers4/silero-models)
 
 <h3> How to use: </h3>
 First, install the package
