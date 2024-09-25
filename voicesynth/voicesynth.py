@@ -281,10 +281,3 @@ class AudioManager:
 
         play()
 
-# disable_logging()
-
-
-# make a default say function in english language
-model = Model("v3_en", "model_v3_en.pt")
-synth = Synthesizer(model)
-say = synth.say 

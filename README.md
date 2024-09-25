@@ -11,18 +11,7 @@ First, install the package
 pip install voicesynth
 ```
 Then import it into your code and go ahead and use it:
-```python
-from voicesynth import say
 
-say("Hello!")
-```
-Or
-```python
-import voicesynth
-
-voicesynth.say("Hello!")
-```
-Or if you want to specify a language/model, you can use it like this:
 
 ```python
 from voicesynth import Model, Synthesizer, show_available_models
