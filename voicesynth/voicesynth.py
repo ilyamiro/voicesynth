@@ -44,13 +44,17 @@ from importlib.util import find_spec
 from typing import Literal, List, Union
 
 import playsound
-import torch
 
 from voicesynth.exceptions import *
 
 from voicesynth.models import (
     models, show_available_models
 )
+
+try:
+    import torch
+except ModuleNotFoundError:
+    raise PackageError("PyTorch is not installed. For lightweight installation, use \"pip install torch==2.2.1+cpu -f https://download.pytorch.org/whl/torch_stable.html\"")
 
 
 class CustomLogger(logging.Logger):
@@ -280,4 +284,3 @@ class AudioManager:
             replay(pydub.AudioSegment.from_wav(path))
 
         play()
-
