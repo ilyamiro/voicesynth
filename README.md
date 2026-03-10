@@ -28,28 +28,24 @@ model.set_speaker("en_73")
 synthesizer = Synthesizer(model)
 synthesizer.say("This is a good way to spend my day!")
 ```
-Instead of using .say() method, you can synthesize an audio and then play it whenever you want
+Instead of using .say() method, you can synthesize an audio and then play it whenever you need:
 
 ```python
 import time
 
 synthesizer.synthesize("Whats'up!", path="audio.wav")
 time.sleep(3)
-synthesizer.audio.play_playsound("audio.wav")
+synthesizer.audio.play_audio("audio.wav")
 ```
-There are multiple ways to play a synthesized audio:
+The library automatically handles cross-platform audio playback natively. You don't need to specify different modules for different operating systems:
 ```python
 model = Model("v4_ru", "model_ru.pt")
 synthesizer = Synthesizer(model)
 
-synthesizer.say("Как дела?", module="pygame") # Using pygame.mixer to play the audio
-synthesizer.say("Хорошо, а твои как?", module="pydub") # Using pydub to play the audio
-```
-There are three ways to play the audio:
-```python
-synthesizer.audio.play_playsound("audio.wav")
-synthesizer.audio.play_pygame("audio.wav")
-synthesizer.audio.play_pydub("audio.wav")
+# Automatically plays using the most reliable native method 
+# (e.g., playsound on Windows, paplay/PipeWire/ALSA on Linux, afplay on macOS)
+synthesizer.say("Как дела?") 
+synthesizer.say("Хорошо, а твои как?")
 ```
 All models support simple ssml tags:
 ```python
