@@ -1,0 +1,12 @@
+LICENSE
+README.md
+setup.py
+voicesynth/__init__.py
+voicesynth/exceptions.py
+voicesynth/models.py
+voicesynth/voicesynth.py
+voicesynth.egg-info/PKG-INFO
+voicesynth.egg-info/SOURCES.txt
+voicesynth.egg-info/dependency_links.txt
+voicesynth.egg-info/requires.txt
+voicesynth.egg-info/top_level.txt
