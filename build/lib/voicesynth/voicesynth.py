@@ -43,7 +43,8 @@ from importlib.util import find_spec
 
 from typing import Literal, List, Union
 
-import playsound
+if sys.platform == "win32":
+    import playsound
 
 from voicesynth.exceptions import *
 

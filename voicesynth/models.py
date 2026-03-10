@@ -4,9 +4,10 @@ Model utilities for voicesynth
 
 # all available models
 models = {    
-    "v5_2_ru": {"url": "https://models.silero.ai/models/tts/ru/v5_2_ru.pt",
+    "v5_2_ru": {"url": "https://models.silero.ai/models/tts/ru/v5_2_ru.pt'",
               "speakers": ['aidar', 'baya', 'kseniya', 'xenia', 'eugene'],
-              "language": "russian"}
+              "language": "russian"
+              },
     "v4_ru": {"url": "https://models.silero.ai/models/tts/ru/v4_ru.pt",
               "speakers": ['aidar', 'baya', 'kseniya', 'xenia', 'eugene'],
               "language": "russian"},
