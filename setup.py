@@ -1,9 +1,8 @@
 from setuptools import setup, find_packages
-
 from pathlib import Path
+
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding="utf-8")
-
 
 setup(
     name="voicesynth",
@@ -22,7 +21,6 @@ setup(
     ],
     install_requires=[
         "numpy",
-        "playsound"
+        "playsound==1.2.2; platform_system == 'Windows'"
     ],
-
 )

@@ -1,2 +1,4 @@
+shell.nix
 .idea
+.pypirc
 __pycache__
