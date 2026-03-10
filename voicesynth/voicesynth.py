@@ -55,8 +55,10 @@ from voicesynth.models import (
 try:
     import torch
 except ModuleNotFoundError:
-    raise PackageError("PyTorch is not installed. For lightweight installation, use \"pip install torch==2.2.1+cpu -f https://download.pytorch.org/whl/torch_stable.html\"")
-
+    raise PackageError(
+        "PyTorch is not installed. For a lightweight CPU-only installation, use: "
+        "pip install torch --index-url https://download.pytorch.org/whl/cpu"
+    )
 
 class CustomLogger(logging.Logger):
     def __init__(self):
