@@ -2,3 +2,7 @@ shell.nix
 .idea
 .pypirc
 __pycache__
+test.py
+dist/*
+build/*
+voicesynth.egg-info/*
