@@ -1,4 +1,0 @@
-numpy
-
-[:platform_system == "Windows"]
-playsound==1.2.2

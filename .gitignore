@@ -1,7 +1,7 @@
 shell.nix
 .idea
 .pypirc
-__pycache__
+**/__pycache__/
 test.py
 dist/*
 build/*
