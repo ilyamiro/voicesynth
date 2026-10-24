@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voicesynth"
+dynamic = ["version"]
+description = "Offline realistic voice synthesis based on Silero TTS models"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "Apache-2.0" }
+authors = [{ name = "ilyamiro", email = "ilyamiro.work@gmail.com" }]
+keywords = ["tts", "text-to-speech", "voice", "synthesis", "silero", "speech"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = []
+
+[project.optional-dependencies]
+torch = ["torch"]
+
+[project.scripts]
+voicesynth = "voicesynth.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ilyamiro/voicesynth"
+Issues = "https://github.com/ilyamiro/voicesynth/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "voicesynth.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["voicesynth*"]

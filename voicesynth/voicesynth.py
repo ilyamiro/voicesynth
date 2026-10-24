@@ -1,257 +1,195 @@
-"""
-Voice Synthesizing package
-Author: ilyamiro
-
-Available on pip:
-pip install voicesynth
-
-This package was created for realistic voice-synthesis
-
-Copyright [2024] [Ilya Miro]
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-"""
-import logging
-
-
-def _disable_loggers():
-    """
-    Disables all logs produced by imported modules
-
-    DEPRECATED
-    """
-    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
-    for logg in loggers:
-        logg.setLevel(logging.ERROR)
-
-
 import os
-import subprocess
-import sys
+import tempfile
+from typing import List, Optional
+from xml.sax.saxutils import escape
 
-from importlib.util import find_spec
-
-from typing import Literal, List, Union
-
-if sys.platform == "win32":
-    import playsound
-
-from voicesynth.exceptions import *
-
-from voicesynth.models import (
-    models, show_available_models
+from voicesynth.audio import AudioManager
+from voicesynth.download import download_file
+from voicesynth.exceptions import (
+    IncorrectModelPath,
+    IncorrectSpeaker,
+    InvalidAudioFormat,
+    PackageError,
+    SynthesisError,
 )
+from voicesynth.log import disable_logging, enable_logging, logger
+from voicesynth.models import DEFAULT_MODEL, SAMPLE_RATES, get_model_info, models, show_available_models
 
-try:
-    import torch
-except ModuleNotFoundError:
-    raise PackageError(
-        "PyTorch is not installed. For a lightweight CPU-only installation, use: "
-        "pip install torch --index-url https://download.pytorch.org/whl/cpu"
+__all__ = [
+    "Model",
+    "Synthesizer",
+    "AudioManager",
+    "models",
+    "show_available_models",
+    "disable_logging",
+    "enable_logging",
+    "default_model_path",
+]
+
+
+def _torch():
+    try:
+        import torch
+    except ModuleNotFoundError:
+        raise PackageError(
+            "PyTorch is not installed. For a lightweight CPU-only installation, use: "
+            "pip install torch --index-url https://download.pytorch.org/whl/cpu"
+        ) from None
+    return torch
+
+
+def default_model_path(model: str) -> str:
+    cache = os.environ.get("VOICESYNTH_HOME") or os.path.join(
+        os.environ.get("XDG_CACHE_HOME") or os.path.join(os.path.expanduser("~"), ".cache"), "voicesynth"
     )
-
-class CustomLogger(logging.Logger):
-    def __init__(self):
-        super().__init__("Voicesynth", level=logging.NOTSET)
-        self._setup()
-
-    def _setup(self):
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(fmt="Voicesynth - %(asctime)s - %(message)s", datefmt="%Y-%b-%d %H:%M:%S"))
-        self.addHandler(handler)
-
-
-logger = CustomLogger()
-
-
-def disable_logging():
-    """
-    Disables voicesynth logging
-    """
-    logger.disabled = True
-
-
-def installed(name: str) -> bool:
-    """
-    A function for checking if the specified package is installed in venv
-    :param name: name of the package
-    :return: True if package is installed False otherwise
-    """
-    return False if not find_spec(name) else True
+    return os.path.join(cache, f"{model}.pt")
 
 
 class Model:
-    """
-    TTS Model class for Synthesizer
-    """
+    def __init__(
+        self,
+        model: str = DEFAULT_MODEL,
+        model_path: Optional[str] = None,
+        show_download: bool = True,
+        speaker: Optional[str] = None,
+    ):
+        info = get_model_info(model)
+        self.model = model
+        self.url = info["url"]
+        self.language = info["language"]
+        self.speakers: List[str] = list(info["speakers"])
+        self.exhaustive: bool = info["exhaustive"]
+        self.model_path = os.path.expanduser(model_path) if model_path else default_model_path(model)
 
-    def __init__(self, model: str, model_path: str, show_download: bool = True):
-        self.model = model  # name of the model
-        self.model_path = model_path  # path to the model for downloading
-        try:
-            self.url = models[model]["url"]
-            self.speakers = models[model]["speakers"]
-            self.set_speaker(self.speakers[0])
-        except KeyError:
-            error_msg = "Model invalid. Ensure it's one of "
-            for key in models.keys():
-                error_msg += f"{key}, "
-            raise IncorrectModel(error_msg)
-
-        logger.info("Model configured")
-
-        # Ensuring that model is a PyTorch one
         if not self.model_path.endswith(".pt"):
             raise IncorrectModelPath("Model file path should end with .pt!")
 
+        self.set_speaker(speaker or self.speakers[0])
+        logger.info("Model configured")
         self.download_model(self.url, self.model_path, show_download)
 
-    def set_speaker(self, name):
-        if name in models[self.model]["speakers"]:
-            # noinspection PyAttributeOutsideInit
-            self.speaker = name
-            logger.info(f"Speaker {name} set")
-        else:
-            error_msg = "Speaker invalid! Ensure it's one of "
-            for speaker in models[self.model]["speakers"]:
-                error_msg += f"{speaker}, "
-            raise IncorrectSpeaker(error_msg)
+    def set_speaker(self, name: str) -> None:
+        if name not in self.speakers and self.exhaustive:
+            raise IncorrectSpeaker(f"Speaker invalid! Ensure it's one of {', '.join(self.speakers)}")
+        self.speaker = name
+        logger.info(f"Speaker {name} set")
 
     def download_model(self, url: str, model_path: str, show_progress: bool = True) -> None:
-        """
-        Function for downloading voice model
-        :param url: url for model downloading
-        :param show_progress: if to show model's downloading process
-        :param model_path: path for model saving
-        """
         self.model_path = model_path
-        # downloading model from source
-        if not os.path.exists(f"{self.model_path}"):
-            logger.info("Downloading synthesis model")
-            torch.hub.download_url_to_file(url, f"{self.model_path}",
-                                           progress=show_progress)
-        else:
+        if os.path.isfile(model_path):
             logger.info("Setting up existing model")
+            return
+        logger.info("Downloading synthesis model")
+        download_file(url, model_path, show_progress)
 
 
 class Synthesizer:
-    """
-    Class for synthesizing text
-    Based on silero-tts models from https://github.com/snakers4/silero-models
-    """
+    def __init__(
+        self,
+        model: Optional[Model] = None,
+        device: str = "cpu",
+        threads: Optional[int] = None,
+        sample_rate: int = 48000,
+    ) -> None:
+        self._check_sample_rate(sample_rate)
+        torch = _torch()
 
-    def __init__(self, model: Model) -> None:
-        """
-        Synthesizer initializing
-        """
-
-        # Parameters for synthesis
-        self.model = model
+        self.model = model if model is not None else Model()
         self.audio = AudioManager()
+        self.sample_rate = sample_rate
 
-        logger.info("Synthesizer configured")
+        if threads:
+            torch.set_num_threads(threads)
 
-        # setting torch configuration
-        device = torch.device("cpu")
-        torch.set_num_threads(16)
-
-        logger.info("PyTorch device configured: Cpu, 16 threads")
-        # initialize sample rate
-        self.sample_rate = 48000
-
-        # creating model
-        self.model_download = torch.package.PackageImporter(
-            f"{self.model.model_path}").load_pickle("tts_models", "model")
-        self.model_download.to(device)
-
-        logger.info("Model imported to torch tts")
-
-    def say(self, text: str, path: str = "audio.wav", prosody_rate: int = 100) -> None:
-        """
-        Function for saying something
-        :param prosody_rate: relative speed for saying
-        :param path: path for audio to be saved in. Should be a .wav file
-        :param text: text for saying
-        """
-        if not path.endswith(".wav"):
-            raise InvalidAudioFormat("Incorrect audio format! Ensure that path leads to a .wav file")
-
-        self.synthesize(text, path, prosody_rate)
-
-        self.audio.play_audio(path)
-
-    def synthesize(self, text: str, path: str = "audio.wav", prosody_rate: int = 100) -> None:
+        self.device = torch.device(device)
         try:
-            self.model_download.save_wav(ssml_text=f"<speak><prosody rate='{prosody_rate}%'>{text}</prosody></speak>",
-                                         speaker=self.model.speaker,
-                                         sample_rate=self.sample_rate,
-                                         audio_path=path)
+            self._tts = torch.package.PackageImporter(self.model.model_path).load_pickle("tts_models", "model")
+        except Exception as error:
+            raise IncorrectModelPath(
+                f"Could not load {self.model.model_path}. Delete the file to download it again: {error}"
+            ) from error
+        self._tts.to(self.device)
 
-            logger.info("Audio synthesized")
-        except Exception:
-            raise SynthesisError(
-                f"There was en error synthesizing this text: {text}. Ensure all parameters are inputted correctly")
+        loaded_speakers = list(getattr(self._tts, "speakers", None) or [])
+        if loaded_speakers:
+            self.model.speakers = loaded_speakers
+            self.model.exhaustive = True
+            self.model.set_speaker(self.model.speaker)
 
+        logger.info(f"Synthesizer configured: {self.model.model}, device {device}")
 
-def _player(path: str):
-    """
-    Player decorator for checking specified path before playing.
-    """
-    def decorator(func):
-        def wrapper():
-            # checking if the path exists
-            if os.path.exists(path):
-                func()
-                logger.info(f"File {path} played")
-            else:
-                raise InvalidAudioPath("Specified path for playing does not exist")
-        return wrapper
-    return decorator
-
-
-class AudioManager:
     @staticmethod
-    def play_audio(path: str):
-        @_player(path)
-        def play():
-            if sys.platform == "win32":
-                playsound.playsound(path)
-            elif sys.platform == "linux":
-                linux_players = ["paplay", "pw-play", "aplay"]
-                played = False
-                
-                for player in linux_players:
-                    try:
-                        subprocess.run(
-                            [player, path], 
-                            check=True, 
-                            stdout=subprocess.DEVNULL, 
-                            stderr=subprocess.DEVNULL
-                        )
-                        played = True
-                        break  # Stop trying if successful
-                    except (subprocess.CalledProcessError, FileNotFoundError):
-                        continue
-                
-                if not played:
-                    logger.error("No suitable audio player found on Linux. Ensure PulseAudio, PipeWire, or ALSA is installed.")
-            elif sys.platform == "darwin":
-                # Fallback for macOS users just in case
-                try:
-                    subprocess.run(["afplay", path], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                except (subprocess.CalledProcessError, FileNotFoundError):
-                    playsound.playsound(path)
-            else:
-                playsound.playsound(path)
+    def _check_sample_rate(sample_rate: int) -> None:
+        if sample_rate not in SAMPLE_RATES:
+            raise InvalidAudioFormat(f"Sample rate must be one of {', '.join(map(str, SAMPLE_RATES))}")
 
-        play()
+    @property
+    def speakers(self) -> List[str]:
+        return self.model.speakers
+
+    def set_speaker(self, name: str) -> None:
+        self.model.set_speaker(name)
+
+    def synthesize(
+        self,
+        text: str,
+        path: str = "audio.wav",
+        prosody_rate: int = 100,
+        speaker: Optional[str] = None,
+        sample_rate: Optional[int] = None,
+        ssml: bool = False,
+    ) -> str:
+        if not path.lower().endswith(".wav"):
+            raise InvalidAudioFormat("Incorrect audio format! Ensure that path leads to a .wav file")
+        if not text or not text.strip():
+            raise SynthesisError("There is no text to synthesize")
+
+        speaker = speaker or self.model.speaker
+        if speaker not in self.model.speakers:
+            raise IncorrectSpeaker(f"Speaker invalid! Ensure it's one of {', '.join(self.model.speakers)}")
+
+        rate = sample_rate or self.sample_rate
+        self._check_sample_rate(rate)
+
+        arguments = {"speaker": speaker, "sample_rate": rate, "audio_path": path}
+        if ssml:
+            arguments["ssml_text"] = text
+        elif prosody_rate != 100:
+            arguments["ssml_text"] = f"<speak><prosody rate='{prosody_rate}%'>{escape(text)}</prosody></speak>"
+        else:
+            arguments["text"] = text
+
+        directory = os.path.dirname(os.path.abspath(path))
+        os.makedirs(directory, exist_ok=True)
+
+        try:
+            self._tts.save_wav(**arguments)
+        except Exception as error:
+            raise SynthesisError(f"There was an error synthesizing this text: {text}. {error}") from error
+
+        logger.info("Audio synthesized")
+        return path
+
+    def say(
+        self,
+        text: str,
+        path: Optional[str] = None,
+        prosody_rate: int = 100,
+        speaker: Optional[str] = None,
+        sample_rate: Optional[int] = None,
+        ssml: bool = False,
+    ) -> Optional[str]:
+        if path is not None:
+            self.synthesize(text, path, prosody_rate, speaker, sample_rate, ssml)
+            self.audio.play_audio(path)
+            return path
+
+        handle, temporary = tempfile.mkstemp(suffix=".wav", prefix="voicesynth_")
+        os.close(handle)
+        try:
+            self.synthesize(text, temporary, prosody_rate, speaker, sample_rate, ssml)
+            self.audio.play_audio(temporary)
+        finally:
+            if os.path.exists(temporary):
+                os.remove(temporary)
+        return None

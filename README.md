@@ -1,62 +1,93 @@
-<h2>voicesynth</h2> 
-<strong>Voice Synthesizing Library</strong> <br><br>
-
+<h2>voicesynth</h2>
+<strong>Offline voice synthesis library</strong> <br><br>
 
 > [!NOTE]
-> The project uses [Silero TTS](https://github.com/snakers4/silero-models)
+> The project uses [Silero TTS](https://github.com/snakers4/silero-models) models
 
-<h3> How to use: </h3>
-First, install the package
+### Install
 
 ```bash
 pip install voicesynth
+pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```
-Then import it into your code and go ahead and use it:
 
+PyTorch is not pulled in automatically so you can pick the build you want (CPU, CUDA, ...). `pip install voicesynth[torch]` installs the default one.
+
+### Quick start
 
 ```python
-from voicesynth import Model, Synthesizer, show_available_models
+from voicesynth import Model, Synthesizer
 
-show_available_models() # Showcase of all tts models available
+synthesizer = Synthesizer(Model("v5_6_ru"))
+synthesizer.say("В н+едрах т+ундры в+ыдры в г+етрах т+ырят в в+ёдра +ядра к+едров.")
+```
 
-# initializing the model
-# setting show_download to False does not show model downloading progress
-model = Model("v3_en", model_path="model.pt", show_download=False)  
-model.set_speaker("en_73")
+The model is downloaded on first use into `~/.cache/voicesynth` (override with `model_path=` or the `VOICESYNTH_HOME` environment variable).
 
-# creating a synthesizer instance
+### Models
+
+```python
+from voicesynth import show_available_models, available_models
+
+show_available_models()
+show_available_models("tatar")
+available_models("russian")
+```
+
+| Family | Models |
+| --- | --- |
+| Russian | `v5_6_ru`, `v5_5_ru`, `v5_4_ru`, `v5_3_ru`, `v5_2_ru`, `v5_1_ru`, `v5_ru`, `v4_ru`, `v3_1_ru` |
+| CIS languages | `v5_cis_base`, `v5_cis_base_nostress`, `v5_cis_ext` |
+| Turkic / Caucasian | `v5_turkic`, `v5_caucasian` |
+| Cyrillic | `v4_cyrillic` |
+| Ukrainian / Uzbek / Tatar / Kalmyk | `v4_ua`, `v3_ua`, `v4_uz`, `v3_uz`, `v3_tt`, `v3_xal` |
+| Indic | `v4_indic`, `v3_indic`, `v3_en_indic` |
+| English / German / Spanish / French | `v3_en`, `v3_de`, `v3_es`, `v3_fr` |
+
+`v5_cis_base`, `v5_cis_ext`, `v5_turkic` and `v5_caucasian` expect stress marks (`к+ошка`) in the text; the `nostress` variant needs them only for Slavic languages. Speakers are prefixed with the language code, for example `tat_albina` or `kaz_abai`.
+
+### Speakers and speed
+
+```python
+model = Model("v3_en", speaker="en_73")
+model.set_speaker("en_12")
+
 synthesizer = Synthesizer(model)
-synthesizer.say("This is a good way to spend my day!")
+synthesizer.say("Hello there", speaker="en_5", prosody_rate=90)
+print(synthesizer.speakers)
 ```
-Instead of using .say() method, you can synthesize an audio and then play it whenever you need:
+
+### Saving audio
 
 ```python
-import time
-
-synthesizer.synthesize("Whats'up!", path="audio.wav")
-time.sleep(3)
+synthesizer.synthesize("Saved for later", path="audio.wav")
+synthesizer.say("Saved and played", path="audio.wav")
 synthesizer.audio.play_audio("audio.wav")
 ```
-The library automatically handles cross-platform audio playback natively. You don't need to specify different modules for different operating systems:
-```python
-model = Model("v4_ru", "model_ru.pt")
-synthesizer = Synthesizer(model)
 
-# Automatically plays using the most reliable native method 
-# (e.g., playsound on Windows, paplay/PipeWire/ALSA on Linux, afplay on macOS)
-synthesizer.say("Как дела?") 
-synthesizer.say("Хорошо, а твои как?")
-```
-All models support simple ssml tags:
-```python
-synthesizer.say("В н+едрах т+ундры в+ыдры п+ели п+есни", prosody_rate=90)   
-# I added prosody as a parameter, so that people who are not familiar with ssml tags
-# could change speaking speed without knowing how to manually do it
+`say()` without a path plays through a temporary file. Pass `ssml=True` to send your own SSML, `sample_rate=` (8000, 24000 or 48000) to change quality, and `device="cuda"` or `threads=4` to the `Synthesizer` constructor.
+
+Audio playback is native: `winsound` on Windows, `afplay` on macOS and the first available of `paplay`, `pw-play`, `aplay`, `ffplay`, `mpv`, `play` on Linux.
+
+### Command line
+
+```bash
+voicesynth models
+voicesynth models --language russian
+voicesynth speakers v3_en
+voicesynth say "Hello world" -m v3_en -s en_73
+voicesynth say "Saved only" -m v3_en -o hello.wav --no-play
+echo "Piped text" | voicesynth say -m v3_en
 ```
 
-By default, logging is enabled. If it bothers you, you can disable it
+### Logging
+
 ```python
-from voicesynth import disable_logging
+from voicesynth import disable_logging, enable_logging
 
 disable_logging()
 ```
+
+### Errors
+
+All exceptions derive from `voicesynth.exceptions.VoiceSynthError`: `IncorrectModel`, `IncorrectSpeaker`, `ModelDownloadError`, `SynthesisError`, `AudioPlayingError`, `PackageError` and others.
