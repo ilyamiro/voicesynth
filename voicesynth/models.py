@@ -1,6 +1,6 @@
 import shutil
 import sys
-from typing import List, Optional
+from typing import Dict, List, Optional, TypedDict
 
 from voicesynth.exceptions import IncorrectModel
 
@@ -9,11 +9,25 @@ SAMPLE_RATES = (8000, 24000, 48000)
 DEFAULT_MODEL = "v5_6_ru"
 
 
-def _entry(path: str, language: str, speakers: List[str], exhaustive: bool = True) -> dict:
-    return {"url": f"{BASE_URL}/{path}", "language": language, "speakers": speakers, "exhaustive": exhaustive}
+class ModelInfo(TypedDict):
+    url: str
+    language: str
+    speakers: List[str]
+    exhaustive: bool
+    script: Optional[str]
 
 
-models = {
+def _entry(path: str, language: str, speakers: List[str], exhaustive: bool = True) -> ModelInfo:
+    return {
+        "url": f"{BASE_URL}/{path}",
+        "language": language,
+        "speakers": speakers,
+        "exhaustive": exhaustive,
+        "script": None,
+    }
+
+
+models: Dict[str, ModelInfo] = {
     "v5_6_ru": _entry("ru/v5_6_ru.pt", "russian", ['aidar', 'baya', 'kseniya', 'xenia', 'eugene']),
     "v5_5_ru": _entry("ru/v5_5_ru.pt", "russian", ['aidar', 'baya', 'kseniya', 'xenia', 'eugene']),
     "v5_4_ru": _entry("ru/v5_4_ru.pt", "russian", ['aidar', 'baya', 'kseniya', 'xenia']),
@@ -44,7 +58,19 @@ models = {
     "v3_indic": _entry("indic/v3_indic.pt", "indic languages", ['hindi_male', 'hindi_female', 'random'], False),
 }
 
-def get_model_info(name: str) -> dict:
+_CYRILLIC = (
+    "v5_6_ru", "v5_5_ru", "v5_4_ru", "v5_3_ru", "v5_2_ru", "v5_1_ru", "v5_ru", "v5_turkic",
+    "v5_caucasian", "v4_ru", "v4_ua", "v4_cyrillic", "v3_1_ru", "v3_ua", "v3_tt", "v3_xal",
+)
+_LATIN = ("v4_uz", "v3_uz", "v4_indic", "v3_indic", "v3_en", "v3_en_indic", "v3_de", "v3_es", "v3_fr")
+
+for _name in _CYRILLIC:
+    models[_name]["script"] = "cyrillic"
+for _name in _LATIN:
+    models[_name]["script"] = "latin"
+
+
+def get_model_info(name: str) -> ModelInfo:
     try:
         return models[name]
     except KeyError:

@@ -46,4 +46,8 @@ class ModelDownloadError(VoiceSynthError):
     pass
 
 
+class ModelIntegrityError(ModelDownloadError):
+    pass
+
+
 PackageInstallatioError = PackageInstallationError

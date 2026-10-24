@@ -17,11 +17,14 @@ classifiers = [
     "Operating System :: OS Independent",
     "Development Status :: 4 - Beta",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Typing :: Typed",
 ]
-dependencies = []
+dependencies = ["numpy"]
 
 [project.optional-dependencies]
 torch = ["torch"]
+test = ["pytest"]
+dev = ["pytest", "mypy", "build", "twine"]
 
 [project.scripts]
 voicesynth = "voicesynth.cli:main"
@@ -35,3 +38,13 @@ version = { attr = "voicesynth.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["voicesynth*"]
+
+[tool.setuptools.package-data]
+voicesynth = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.mypy]
+strict = true
+files = ["voicesynth"]
